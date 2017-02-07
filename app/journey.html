@@ -48,19 +48,35 @@
       <div id="lisbonMap"></div>
 
       <script>
+      if (!Date.now) {
+          Date.now = function() { return new Date().getTime(); }
+      }
+
       $.ajax({
         url: "https://222.92.146.245:12900/openAPI/httpservices/customer-mgmt/v1/customers?id-type=Passport&id-number=E87077366&include-cert=N",
-        context: document.body
-      }).setRequestHeader('Channel-Type', 601)
-        .setRequestHeader('Password', "Abc1234%1Hblsqt!")
-        .setRequestHeader('Login-System-Code', "TMF")
-        .setRequestHeader('Region-Id', 18)
-        .setRequestHeader('Be-Id', 18)
-        .done(function(data) {
+        context: document.body,
+        headers: {"Channel-Type": 601,
+                  "Password": "Abc1234%1Hblsqt!",
+                  "Login-System-Code": "TMF",
+                  "Region-Id": 18,
+                  "Be-Id": 18}
+      }).done(function(data) {
           console.log(data);
-      });/*
-      $.getJSON("http://222.92.146.245:5066/rating/balancemgmt/v1/balance?identityNumber=35118815503333", function(){});*/
+      });
+/*
+      $.getJSON("http://222.92.146.245:5066/rating/balancemgmt/v1/balance?identityNumber=35118815503333", function(data){
+        $('#balance').html(data.balanceDetail["0"].amount/100);
+      });*/
 
+      var circleRadius = 1000;
+      radius = (circleRadius/circleRadius)*(0.095394289/circleRadius);
+      var toogle = false;
+      var filterRadius = false;
+      gmarkers = [];
+
+      function inRadius(centerX, centerY, coordX, coordY, radius) {
+         return ((radius^2) < (centerX - coordX)^2 + (centerY - coordY)^2);
+      }
 
       function initMap() {
         var styledMapType = new google.maps.StyledMapType([
@@ -231,20 +247,44 @@
           }
         });
 
+
         map.mapTypes.set('styled_map', styledMapType);
         map.setMapTypeId('styled_map');
 
-        setMarkers(map);
+        setMarkers(map, circleRadius);
+        loadActtractions(map, filterRadius, radius, 38.7223, -9.1393);
 
+        $(document).on('change', ':checkbox', function() {
+          removeMarkers();
+          loadActtractions(map, filterRadius, radius, 38.7223, -9.1393);
+          filterRadius = !filterRadius;
+        });
+      }
+
+      function removeMarkers(){
+          for(i=0; i<gmarkers.length; i++){
+              gmarkers[i].setMap(null);
+          }
+      }
+
+      function loadActtractions(map, filter, radius, centerX, centerY) {
         $.getJSON("http://env-0693795.jelastic.servint.net/DSProductCatalog/api/catalogManagement/v2/productOffering?category.id=2353&fields=id,name,description,productOfferingPrice.price,productOfferingPrice.name,productSpecification", function(data) {
           $.each(data, function(i, item){
               $.getJSON("http://env-0693795.jelastic.servint.net/DSProductCatalog/api/catalogManagement/v2/productSpecification?id="+item.productSpecification.id+"&fields=id,href,description,relatedParty", function(subData) {
                 $.each(subData, function(i, subItem){
                   $.getJSON("http://env-0693795.jelastic.servint.net/DSPartyManagement/api/partyManagement/v2/organization?id="+subItem.relatedParty[0].id+"&fields=id,href,characteristic", function(endData) {
                     var coords = endData[0].characteristic.value.trim().split(',');
-                    addMarkers(map, 'cafe', [
-                      [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
-                    ]);
+                    if(filterRadius) {
+                      if(inRadius(centerX, centerY, coords[0], coords[1], radius)) {
+                        addMarkers(map, 'cafe', [
+                          [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                        ]);
+                      }
+                    } else {
+                      addMarkers(map, 'cafe', [
+                        [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                      ]);
+                    }
                   });
                 });
               });
@@ -257,9 +297,17 @@
                 $.each(subData, function(i, subItem){
                   $.getJSON("http://env-0693795.jelastic.servint.net/DSPartyManagement/api/partyManagement/v2/organization?id="+subItem.relatedParty[0].id+"&fields=id,href,characteristic", function(endData) {
                     var coords = endData[0].characteristic.value.trim().split(',');
-                    addMarkers(map, 'viewpoint', [
-                      [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
-                    ]);
+                    if(filterRadius) {
+                      if(inRadius(centerX, centerY, coords[0], coords[1], radius)) {
+                        addMarkers(map, 'viewpoint', [
+                          [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                        ]);
+                      }
+                    } else {
+                      addMarkers(map, 'viewpoint', [
+                        [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                      ]);
+                    }
                   });
                 });
               });
@@ -272,9 +320,17 @@
                 $.each(subData, function(i, subItem){
                   $.getJSON("http://env-0693795.jelastic.servint.net/DSPartyManagement/api/partyManagement/v2/organization?id="+subItem.relatedParty[0].id+"&fields=id,href,characteristic", function(endData) {
                     var coords = endData[0].characteristic.value.trim().split(',');
-                    addMarkers(map, 'restaurant', [
-                      [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
-                    ]);
+                    if(filterRadius) {
+                      if(inRadius(centerX, centerY, coords[0], coords[1], radius)) {
+                        addMarkers(map, 'restaurant', [
+                          [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                        ]);
+                      }
+                    } else {
+                      addMarkers(map, 'restaurant', [
+                        [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                      ]);
+                    }
                   });
                 });
               });
@@ -287,9 +343,17 @@
                 $.each(subData, function(i, subItem){
                   $.getJSON("http://env-0693795.jelastic.servint.net/DSPartyManagement/api/partyManagement/v2/organization?id="+subItem.relatedParty[0].id+"&fields=id,href,characteristic", function(endData) {
                     var coords = endData[0].characteristic.value.trim().split(',');
-                    addMarkers(map, 'monument', [
-                      [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
-                    ]);
+                    if(filterRadius) {
+                      if(inRadius(centerX, centerY, coords[0], coords[1], radius)) {
+                        addMarkers(map, 'monument', [
+                          [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                        ]);
+                      }
+                    } else {
+                      addMarkers(map, 'monument', [
+                        [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                      ]);
+                    }
                   });
                 });
               });
@@ -302,9 +366,17 @@
                 $.each(subData, function(i, subItem){
                   $.getJSON("http://env-0693795.jelastic.servint.net/DSPartyManagement/api/partyManagement/v2/organization?id="+subItem.relatedParty[0].id+"&fields=id,href,characteristic", function(endData) {
                     var coords = endData[0].characteristic.value.trim().split(',');
-                    addMarkers(map, 'casino', [
-                      [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
-                    ]);
+                    if(filterRadius) {
+                      if(inRadius(centerX, centerY, coords[0], coords[1], radius)) {
+                        addMarkers(map, 'casino', [
+                          [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                        ]);
+                      }
+                    } else {
+                      addMarkers(map, 'casino', [
+                        [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                      ]);
+                    }
                   });
                 });
               });
@@ -317,22 +389,26 @@
                 $.each(subData, function(i, subItem){
                   $.getJSON("http://env-0693795.jelastic.servint.net/DSPartyManagement/api/partyManagement/v2/organization?id="+subItem.relatedParty[0].id+"&fields=id,href,characteristic", function(endData) {
                     var coords = endData[0].characteristic.value.trim().split(',');
-                    addMarkers(map, 'fair', [
-                      [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
-                    ]);
+                    if(filterRadius) {
+                      if(inRadius(centerX, centerY, coords[0], coords[1], radius)) {
+                        addMarkers(map, 'fair', [
+                          [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                        ]);
+                      }
+                    } else {
+                      addMarkers(map, 'fair', [
+                        [item.name, Number(coords[0]), Number(coords[1]), (item.productOfferingPrice[0].price.taxIncludedAmount/100)]
+                      ]);
+                    }
                   });
                 });
               });
           });
         });
-
-
-
       }
 
 
       function setMarkers(map) {
-
         // Add user and radius around him
         var userCoords = {center: {lat: 38.7223, lng: -9.1393}};
         var image = {
@@ -359,18 +435,17 @@
           fillOpacity: 0.1,
           map: map,
           center: userCoords.center,
-          radius: 1000
+          radius: 1200
         });
       }
 
 
       function addMarkers(map, attraction, array) {
-        var toogle = false;
         $("body").click(function() {
           if((toogle) && (!$(event.target).is('#markerDescription')) && (!$(event.target).parents("#markerDescription").is("#markerDescription"))) {
               $('#markerDescription').parent().parent().parent().parent().html('');
+              toogle = !toogle;
           }
-          toogle = !toogle;
         });
 
         var image = {
@@ -419,7 +494,7 @@
                           '<option>5</option>'+
                         '</select>'+
                       '</div>'+
-                      '<p class="'+item[3]+'"><a class="btn btn-success" id="price" href="#">Buy at '+item[3]+'€</a></p></form>'+
+                      '<p class="'+item[3]+'"><a class="btn btn-success" id="price" onclick="confirmBuy()">Buy at '+item[3]+'€</a></p></form>'+
                       '</div>'+
                       '</div>';
 
@@ -438,6 +513,7 @@
           marker.addListener('click', function() {
             infowindow.open(map, marker);
           });
+          gmarkers.push(marker);
 
           $('.container').on('change', '#qtt', function() {
             $('#price').html('Buy at '+ ($('#price').parent().attr("class"))*($('#qtt').val()) +'€');
@@ -446,18 +522,78 @@
       }
 
 
+      function confirmBuy() {
+        if(confirm('Are you sure?')) {
+          //debugger;
+          /*$.ajax({
+            type: "POST",
+            url: "http://222.92.146.245:5066/rating/balancemgmt/v1/balancededuction",
+            data: JSON.stringify({
+              "identityNumber":"35118815503333",
+              "deductInfoList":[{
+                "accountType":"2000",
+                "accountClass":"0",
+                "unitValue": "100",
+                "exponent":"0",
+                "currencyID":"1049",
+                "unitType":"0",
+                "applyTime":"20170101000000",
+                "expireTime":"20170201000000"
+              }],
+              "serviceSeqNo": Date.now().toString(),
+              "description":"Payment for Vasco Tours experience"
+            }),
+            success: function(){},
+            processData: false
+          });*/
+           money -= Number(($('#price').parent().attr("class")));
+          //console.log('success! Add '+ $('#charge-amount').val());
+          $('#balance').html(money);
+        }
+      }
+
       function confirmSubmit() {
         if(confirm('Are you sure?')) {
           $('#chargeModal').modal('toggle');
-          console.log('success! Add '+ $('#charge-amount').val());
+          /*$.ajax({
+		          type: "POST",
+              url: "http://222.92.146.245:5068/openapi/accounts-receivable/paymentmgmt/v1/payment",
+              context: document.body,
+              headers: {"Content-Type": "application/json",
+                        "password": "AAaa12#$",
+                        "messageSeq": Date.now().toString(),
+                        "loginsystemcode": "101",
+                        "remoteip": "100.65.128.83",
+                        "operatorId": "101",
+                        "beId": "101"},
+              data: {
+      	      "identityNumber":"18815503333",
+      	      "serviceSeqNo":"123456",
+      	      "cashPayment":{
+      	       "paymentMethod":"2001",
+      	       "amount":"10000000000"
+      	       },
+             "currencyID":"1049"
+      }).done(function() {});
+*/        money += Number($('#charge-amount').val());
+          //console.log('success! Add '+ $('#charge-amount').val());
+          $('#balance').html(money);
         }
       }
+
+      money = 300;
       </script>
 
-    <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGJPmVSc-XxmZmxwZQHYK8qy7cXVNTvOs&callback=initMap">
-    </script>
-
+      <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGJPmVSc-XxmZmxwZQHYK8qy7cXVNTvOs&callback=initMap">
+      </script>
+<!--
+    <form class="form-check" id="radiusCheck">
+      <label class="form-check-label">
+        <nobr><input type="checkbox" class="form-check-input">
+        Within radius
+      </nobr></label>
+    </form> -->
 
     <ul id="legend"> <strong>Legend:</strong>
       <li class="monument" style="margin-top: 10px">Monuments</li>
@@ -482,7 +618,7 @@
 
         <div id="collapseOne" class="collapse show" role="tabpanel" aria-labelledby="headingOne">
           <div class="card-block">
-            <span id="balance">NA</span>€
+            <span id="balance">300</span>€
             <button class="btn btn-secondary" id="charge" data-toggle="modal" data-target="#chargeModal" href="#">Top Up</button>
           </div>
         </div>
@@ -524,6 +660,8 @@
     <div class="footer">
       <p>Made with ♥ by DaGama team</p>
     </div>
+
+    <div id="jsInject"></div>
 
     <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
     <script>
